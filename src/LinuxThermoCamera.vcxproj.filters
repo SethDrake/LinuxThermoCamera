@@ -29,6 +29,9 @@
     <ClCompile Include="thermal.cpp">
       <Filter>Source files</Filter>
     </ClCompile>
+    <ClCompile Include="framebuffer.cpp">
+      <Filter>Source files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Makefile" />
@@ -53,6 +56,12 @@
       <Filter>Header files</Filter>
     </ClInclude>
     <ClInclude Include="thermal.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="mini_fonts.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="framebuffer.h">
       <Filter>Header files</Filter>
     </ClInclude>
   </ItemGroup>

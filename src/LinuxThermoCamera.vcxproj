@@ -63,6 +63,7 @@
   <ItemDefinitionGroup>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="framebuffer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="thermal.cpp" />
   </ItemGroup>
@@ -75,7 +76,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h" />
+    <ClInclude Include="framebuffer.h" />
     <ClInclude Include="main.h" />
+    <ClInclude Include="mini_fonts.h" />
     <ClInclude Include="thermal.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

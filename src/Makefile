@@ -35,7 +35,7 @@ error:
 	$(error Invalid configuration, please check your inputs)
 endif
 
-SOURCEFILES := main.cpp thermal.cpp
+SOURCEFILES := framebuffer.cpp main.cpp thermal.cpp
 EXTERNAL_LIBS := 
 EXTERNAL_LIBS_COPIED := $(foreach lib, $(EXTERNAL_LIBS),$(BINARYDIR)/$(notdir $(lib)))
 

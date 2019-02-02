@@ -1,6 +1,7 @@
 #include "main.h"
 #include "common.h"
 #include "thermal.h"
+#include "framebuffer.h"
 #include <iostream>
 #include <linux/fb.h>
 #include <fcntl.h>
@@ -14,11 +15,20 @@
 
 IRSensor irSensor;
 cv::VideoCapture camera;
+Framebuffer infoPanelFb;
+
+int frameTimeMs = 0;
 
 struct fb_fix_screeninfo finfo;
 struct fb_var_screeninfo vinfo;
 
+volatile uint8_t minTemp;
+volatile uint8_t maxTemp;
+cv::Point hotPos;
+cv::Point coldPos;
+
 volatile uint32_t thermalImg[THERMAL_RES * THERMAL_RES];
+volatile uint32_t infoPanelImg[INFO_PANEL_WIDTH * INFO_PANEL_HEIGHT];
 
 extern void fbcon_cursor(int blank);
 extern void clearScreen(const uint16_t color, uint8_t* fbp);
@@ -31,6 +41,7 @@ extern bool initCamera();
 
 extern cv::Mat readThermal();
 extern cv::Mat readCamera(int threshold = 0);
+extern cv::Mat drawInfoPanel();
 
 
 void fbcon_cursor(const int blank)
@@ -95,7 +106,7 @@ uint8_t* initFramebuffer()
 
 bool initThermal()
 {
-	return irSensor.init(THERMAL_I2C, (uint8_t*)&thermalImg, THERMAL_RES, THERMAL_RES, ALTERNATE_COLOR_SCHEME);
+	return irSensor.init(THERMAL_I2C, THERMAL_RES, THERMAL_RES, ALTERNATE_COLOR_SCHEME);
 }
 
 bool initCamera()
@@ -105,8 +116,8 @@ bool initCamera()
 	{
 		return false;
 	}
-	camera.set(cv::CAP_PROP_FRAME_WIDTH, 320);
-	camera.set(cv::CAP_PROP_FRAME_HEIGHT, 240);
+	camera.set(cv::CAP_PROP_FRAME_WIDTH, CAM_FRAME_WIDTH);
+	camera.set(cv::CAP_PROP_FRAME_HEIGHT, CAM_FRAME_HEIGHT);
 	return true;
 }
 
@@ -114,7 +125,7 @@ cv::Mat readThermal()
 {
 	cv::Mat frame;
 	irSensor.readImage();
-	irSensor.visualizeImage(THERMAL_RES, THERMAL_RES, 2);
+	irSensor.visualizeImage((uint8_t*)&thermalImg, THERMAL_RES, THERMAL_RES, 2);
 	frame.create(THERMAL_RES, THERMAL_RES, CV_8UC4);
 	frame.data = (uchar*)&thermalImg;
 	cv::cvtColor(frame, frame, cv::COLOR_RGBA2RGB);
@@ -127,7 +138,7 @@ cv::Mat readCamera(const int threshold)
 	camera.read(frame);
 	if (!frame.empty())
 	{
-		cv::resize(frame, frame, cv::Size(240, 240), 0, 0, cv::INTER_LINEAR); //resize
+		cv::resize(frame, frame, cv::Size(CAM_FRAME_WIDTH, CAM_FRAME_HEIGHT), 0, 0, cv::INTER_LINEAR); //resize
 		cv::cvtColor(frame, frame, cv::COLOR_BGR2GRAY);
 
 		if (threshold > 0)
@@ -142,11 +153,55 @@ cv::Mat readCamera(const int threshold)
 			frame.copyTo(dst, edges);
 			return dst;
 		} 
-		else
-		{
-			cv::cvtColor(frame, frame, cv::COLOR_GRAY2BGR);
-		}
+
+		cv::cvtColor(frame, frame, cv::COLOR_GRAY2BGR);
 	}
+	return frame;
+}
+
+cv::Mat drawInfoPanel()
+{
+	irSensor.drawGradient((uint8_t*)&infoPanelImg, 6, 20, 16, 175, INFO_PANEL_WIDTH);
+
+	const uint8_t hotDot = irSensor.getHotDotIndex();
+	const uint8_t hotDotY = hotDot / 8;
+	const uint8_t hotDotX = hotDot % 8;
+	hotPos = cv::Point(hotDotX * (THERMAL_RES / 8), hotDotY * (THERMAL_RES / 8));
+	if (hotPos.x > (THERMAL_RES - 12))
+	{
+		hotPos.x = THERMAL_RES - 12;
+	}
+	if (hotPos.y < 12)
+	{
+		hotPos.y = 12;
+	}
+
+	const uint8_t coldDot = irSensor.getColdDotIndex();
+	const uint8_t coldDotY = coldDot / 8;
+	const uint8_t coldDotX = coldDot % 8;
+	coldPos = cv::Point(coldDotX * (THERMAL_RES / 8), coldDotY * (THERMAL_RES / 8));
+	if (coldPos.x >(THERMAL_RES - 12))
+	{
+		coldPos.x = THERMAL_RES - 12;
+	}
+	if (coldPos.y < 12)
+	{
+		coldPos.y = 12;
+	}
+
+	maxTemp = irSensor.getMaxTemp();
+	minTemp = irSensor.getMinTemp();
+
+	infoPanelFb.printf(4, 5, COLOR_RED, COLOR_BLACK, "MAX:%u\x81", maxTemp);
+	infoPanelFb.printf(4, 180, COLOR_GREEN, COLOR_BLACK, "MIN:%u\x81", minTemp);
+	infoPanelFb.printf(4, 206, "VM:%u", 2);
+	infoPanelFb.printf(4, 217, "T:%04u", frameTimeMs);
+	infoPanelFb.printf(4, 230, "CPU %u%%", 0);
+
+	cv::Mat frame;
+	frame.create(INFO_PANEL_HEIGHT, INFO_PANEL_WIDTH , CV_8UC4);
+	frame.data = (uchar*)&infoPanelImg;
+	cv::cvtColor(frame, frame, cv::COLOR_RGBA2RGB);
 	return frame;
 }
 
@@ -160,7 +215,10 @@ void copyMatToFb(const cv::Mat mat, uint8_t* fbp)
 
 int main(int argc, char *argv[])
 {
+	setlocale(LC_ALL, "");
 	
+	int cnt = 0;
+
 	uint8_t* framebuf = initFramebuffer();
 	if (!initThermal())
 	{
@@ -173,21 +231,45 @@ int main(int argc, char *argv[])
 		return 2;
 	}
 
+	infoPanelFb.init((uint32_t)&infoPanelImg, INFO_PANEL_WIDTH, INFO_PANEL_HEIGHT, COLOR_WHITE, COLOR_BLACK);
+	infoPanelFb.clear(COLOR_BLACK);
+
 	cv::Mat resultFrame;
+	resultFrame.create(cv::Size2d(vinfo.xres, vinfo.yres), CV_8UC3);
 
-	//char str[10];
+	cv::Mat infoFrame;
+
 	while (true) {
-		//const clock_t begin_time = clock();
+		const clock_t begin_time = clock();
 
-		const cv::Mat camFrame = readCamera(50);
+		const cv::Mat camFrame = readCamera(0);
 		const cv::Mat thermalFrame = readThermal();
-		
-		cv::addWeighted(camFrame, 0.6, thermalFrame, 0.4, 0.0, resultFrame);
-		copyMatToFb(camFrame, framebuf);
+		cv::addWeighted(camFrame, 0.6, thermalFrame, 0.4, 0.1, camFrame); //blend images
+		//camFrame.convertTo(camFrame, -1, 1.2, 0); //gamma correction
 
-		//const clock_t end_time = clock();
-		//const float timeMs = float(end_time - begin_time) * 1000 / CLOCKS_PER_SEC;
-		//sprintf(str, "%dms", (int)timeMs);
-		//std::cout << str << std::endl;
+		//print markers
+		char str[6];
+		sprintf(str, "%u\xB0", maxTemp);
+		cv::putText(camFrame, str, hotPos, cv::FONT_HERSHEY_PLAIN, 1.0, cv::Scalar(0xFF, 0xFF, 0xFF), 1);
+
+		sprintf(str, "%u\xF0", minTemp);
+		cv::putText(camFrame, str, coldPos, cv::FONT_HERSHEY_PLAIN, 1.0, cv::Scalar(0x00, 0xFF, 0x00), 1);
+
+		if (cnt == 0) {
+			infoFrame = drawInfoPanel();
+		}
+		cnt++;
+		if (cnt >= 8)
+		{
+			cnt = 0;
+		}
+
+		camFrame.copyTo(resultFrame(cv::Rect(0, 0, camFrame.cols, camFrame.rows))); //copy thermal image to result mat
+		infoFrame.copyTo(resultFrame(cv::Rect(CAM_FRAME_WIDTH, 0, infoFrame.cols, infoFrame.rows)));  //copy info panel to result mat
+
+		copyMatToFb(resultFrame, framebuf);
+
+		const clock_t end_time = clock();
+		frameTimeMs = float(end_time - begin_time) * 1000 / CLOCKS_PER_SEC;
 	}
 }

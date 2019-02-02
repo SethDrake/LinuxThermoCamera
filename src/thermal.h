@@ -12,7 +12,7 @@ class IRSensor {
 public:
 	IRSensor();
 	~IRSensor();
-	bool init(const char* i2cDevName, uint8_t* fbAddr, const uint16_t fbResX, const uint16_t fbResY, const uint8_t* colorScheme);
+	bool init(const char* i2cDevName, const uint16_t fbResX, const uint16_t fbResY, const uint8_t* colorScheme);
 	void setColorScheme(const uint8_t* colorScheme);
 	float readThermistor();
 	void readImage();
@@ -23,8 +23,8 @@ public:
 	uint8_t getColdDotIndex();
 	uint16_t temperatureToRGB565(float temperature, float minTemp, float maxTemp);
 	uint32_t temperatureToABGR(float temperature, float minTemp, float maxTemp);
-	void visualizeImage(uint8_t resX, uint8_t resY, const uint8_t method);
-	void drawGradient(uint8_t startX, uint8_t startY, uint8_t stopX, uint8_t stopY);
+	void visualizeImage(uint8_t* fbAddr, uint8_t resX, uint8_t resY, const uint8_t method);
+	void drawGradient(uint8_t* fbAddr, uint8_t startX, uint8_t startY, uint8_t stopX, uint8_t stopY, uint16_t frameWidth);
 protected:
 	void findMinAndMaxTemp();
 	uint16_t rgb2color(uint8_t R, uint8_t G, uint8_t B);
@@ -32,7 +32,6 @@ protected:
 	uint8_t calculateRGB(uint8_t rgb1, uint8_t rgb2, float t1, float step, float t);
 private:
 	volatile bool isOk;
-	volatile uint8_t* fbAddr;
 	const char* i2cDevName;
 	volatile int file;
 	const uint8_t* colorScheme;

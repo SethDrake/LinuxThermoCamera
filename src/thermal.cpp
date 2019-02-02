@@ -8,7 +8,6 @@ IRSensor::IRSensor()
 {
 	this->minTemp = 0;
 	this->maxTemp = 0;
-	this->fbAddr = nullptr;
 	this->i2cDevName = nullptr;
 	this->file = 0;
 	this->colorScheme = nullptr;
@@ -51,11 +50,10 @@ float IRSensor::rawHLtoTemp(const uint8_t rawL, const uint8_t rawH, const float 
 	return temp;
 }
 
-bool IRSensor::init(const char* i2cDevName, uint8_t* fbAddr, const uint16_t fbResX, const uint16_t fbResY, const uint8_t* colorScheme)
+bool IRSensor::init(const char* i2cDevName, const uint16_t fbResX, const uint16_t fbResY, const uint8_t* colorScheme)
 {
 	this->i2cDevName = i2cDevName;
 	this->setColorScheme(colorScheme);
-	this->fbAddr = fbAddr;
 
 	// Open up the I2C bus
 	file = open(i2cDevName, O_RDWR);
@@ -128,7 +126,7 @@ uint8_t IRSensor::getColdDotIndex()
 	return this->coldDotIndex;
 }
 
-void IRSensor::drawGradient(const uint8_t startX, const uint8_t startY, const uint8_t stopX, const uint8_t stopY)
+void IRSensor::drawGradient(uint8_t* fbAddr, const uint8_t startX, const uint8_t startY, const uint8_t stopX, const uint8_t stopY, const uint16_t frameWidth)
 {
 	uint32_t line[240];
 	const uint8_t height = stopY - startY;
@@ -140,23 +138,23 @@ void IRSensor::drawGradient(const uint8_t startX, const uint8_t startY, const ui
 		line[j] = temperatureToABGR(temp, minTemp + minTempCorr, maxTemp + maxTempCorr);
 	}
 
-	for (uint8_t i = 0; i < width; i++)
+	for (uint8_t i = 0; i < height; i++)
 	{
-		volatile uint32_t *pSdramAddress = (uint32_t *)(this->fbAddr + (240 * (startX + i) + startY) * sizeof(uint32_t));
-		for (uint8_t j = 0; j < height; j++)
+		volatile uint32_t *pSdramAddress = (uint32_t *)(fbAddr + (frameWidth * (startY + i) + startX) * sizeof(uint32_t));
+		for (uint8_t j = 0; j < width; j++)
 		{
-			*(volatile uint32_t *)pSdramAddress = line[j];	
+			*(volatile uint32_t *)pSdramAddress = line[height - i + 1];
 			pSdramAddress++;
 		}
 	}
 }
 
-void IRSensor::visualizeImage(const uint8_t resX, const uint8_t resY, const uint8_t method)
+void IRSensor::visualizeImage(uint8_t* fbAddr, const uint8_t resX, const uint8_t resY, const uint8_t method)
 {
 	uint8_t line = 0;
 	uint8_t row = 0;
 
-	volatile uint32_t* pSdramAddress = (uint32_t *)this->fbAddr;
+	volatile uint32_t* pSdramAddress = (uint32_t *)fbAddr;
 
 	if (method == 0)
 	{
@@ -203,7 +201,7 @@ void IRSensor::visualizeImage(const uint8_t resX, const uint8_t resY, const uint
 			}
 			u = tmp - h;
 
-			pSdramAddress = (uint32_t *)(this->fbAddr + (j * resX) * sizeof(uint32_t));
+			pSdramAddress = (uint32_t *)(fbAddr + (j * resX) * sizeof(uint32_t));
 
 			for (uint16_t i = 0; i < resX; i++) {
 
@@ -252,7 +250,7 @@ void IRSensor::visualizeImage(const uint8_t resX, const uint8_t resY, const uint
 			}
 			u = tmp - h;
 
-			pSdramAddress = (uint32_t *)(this->fbAddr + (j * resX) * sizeof(uint32_t));
+			pSdramAddress = (uint32_t *)(fbAddr + (j * resX) * sizeof(uint32_t));
 
 			for (uint16_t i = 0; i < resX; i++) {
 				tmp = (float)(i) / (float)(resX - 1) * (8 - 1);

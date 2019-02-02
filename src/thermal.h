@@ -22,11 +22,13 @@ public:
 	uint8_t getHotDotIndex();
 	uint8_t getColdDotIndex();
 	uint16_t temperatureToRGB565(float temperature, float minTemp, float maxTemp);
+	uint32_t temperatureToABGR(float temperature, float minTemp, float maxTemp);
 	void visualizeImage(uint8_t resX, uint8_t resY, const uint8_t method);
 	void drawGradient(uint8_t startX, uint8_t startY, uint8_t stopX, uint8_t stopY);
 protected:
 	void findMinAndMaxTemp();
 	uint16_t rgb2color(uint8_t R, uint8_t G, uint8_t B);
+	uint32_t abgr2color(uint8_t R, uint8_t G, uint8_t B, uint8_t A);
 	uint8_t calculateRGB(uint8_t rgb1, uint8_t rgb2, float t1, float step, float t);
 private:
 	volatile bool isOk;
@@ -35,7 +37,7 @@ private:
 	volatile int file;
 	const uint8_t* colorScheme;
 	float dots[64];
-	uint16_t colors[64];
+	uint32_t colors[64];
 	uint8_t coldDotIndex;
 	uint8_t hotDotIndex;
 	float minTemp;

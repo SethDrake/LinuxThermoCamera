@@ -18,7 +18,7 @@ cv::VideoCapture camera;
 struct fb_fix_screeninfo finfo;
 struct fb_var_screeninfo vinfo;
 
-volatile uint16_t thermalImg[THERMAL_RES * THERMAL_RES];
+volatile uint32_t thermalImg[THERMAL_RES * THERMAL_RES];
 
 extern void fbcon_cursor(int blank);
 extern void clearScreen(const uint16_t color, uint8_t* fbp);
@@ -30,7 +30,7 @@ extern bool initThermal();
 extern bool initCamera();
 
 extern cv::Mat readThermal();
-extern cv::Mat readCamera();
+extern cv::Mat readCamera(int threshold = 0);
 
 
 void fbcon_cursor(const int blank)
@@ -66,12 +66,6 @@ void copyImgToFb(const uint16_t imgSizeX, const uint16_t imgSizeY, uint8_t* img,
 			}
 		}
 	}
-}
-
-void copyMatToFb(const cv::Mat mat, uint8_t* fbp)
-{
-	const cv::Size2d size = mat.size();
-	copyImgToFb(size.width, size.height, mat.data, fbp);
 }
 
 uint8_t* initFramebuffer()
@@ -113,30 +107,55 @@ bool initCamera()
 	}
 	camera.set(cv::CAP_PROP_FRAME_WIDTH, 320);
 	camera.set(cv::CAP_PROP_FRAME_HEIGHT, 240);
-	//camera.set(cv::CAP_PROP_FPS, 10);
 	return true;
 }
 
 cv::Mat readThermal()
 {
-	cv::Mat thermalFrame;
+	cv::Mat frame;
 	irSensor.readImage();
 	irSensor.visualizeImage(THERMAL_RES, THERMAL_RES, 2);
-	thermalFrame.create(THERMAL_RES, THERMAL_RES, CV_16UC3);
-	thermalFrame.data = (uchar*)&thermalImg;
-	return thermalFrame;
+	frame.create(THERMAL_RES, THERMAL_RES, CV_8UC4);
+	frame.data = (uchar*)&thermalImg;
+	cv::cvtColor(frame, frame, cv::COLOR_RGBA2RGB);
+	return frame;
 }
 
-cv::Mat readCamera()
+cv::Mat readCamera(const int threshold)
 {
-	cv::Mat frame, frame2;
+	cv::Mat frame;
 	camera.read(frame);
 	if (!frame.empty())
 	{
-		cv::resize(frame, frame2, cv::Size(240, 240), 0, 0, cv::INTER_LINEAR); //resize
-		cv::cvtColor(frame2, frame, cv::COLOR_BGR2BGR565); //change color
+		cv::resize(frame, frame, cv::Size(240, 240), 0, 0, cv::INTER_LINEAR); //resize
+		cv::cvtColor(frame, frame, cv::COLOR_BGR2GRAY);
+
+		if (threshold > 0)
+		{
+			cv::Mat edges;
+			// ReSharper disable once CppJoinDeclarationAndAssignment
+			cv::Mat dst;
+			cv::blur(frame, edges, cv::Size(3, 3)); //blur image
+			cv::Canny(edges, edges, threshold, threshold * 3, 3); //Canny detector
+			dst = cv::Scalar::all(0);
+			cv::cvtColor(frame, frame, cv::COLOR_GRAY2BGR);
+			frame.copyTo(dst, edges);
+			return dst;
+		} 
+		else
+		{
+			cv::cvtColor(frame, frame, cv::COLOR_GRAY2BGR);
+		}
 	}
 	return frame;
+}
+
+void copyMatToFb(const cv::Mat mat, uint8_t* fbp)
+{
+	cv::Mat resultFrame;
+	cv::cvtColor(mat, resultFrame, cv::COLOR_RGB2BGR565);
+	const cv::Size2d size = resultFrame.size();
+	copyImgToFb(size.width, size.height, resultFrame.data, fbp);
 }
 
 int main(int argc, char *argv[])
@@ -156,32 +175,19 @@ int main(int argc, char *argv[])
 
 	cv::Mat resultFrame;
 
-	int i = 0;
-
 	//char str[10];
 	while (true) {
 		//const clock_t begin_time = clock();
 
-		const cv::Mat camFrame = readCamera();
+		const cv::Mat camFrame = readCamera(50);
 		const cv::Mat thermalFrame = readThermal();
 		
-		//cv::addWeighted(camFrame, 0.5, thermalFrame, 0.5, 0.0, resultFrame);
-		
-		if (i == 0) {
-			copyMatToFb(camFrame, framebuf);
-		}
-		else {
-			copyMatToFb(thermalFrame, framebuf);
-		}
-		i++;
-		if (i > 2)
-		{
-			i = 0;
-		}
+		cv::addWeighted(camFrame, 0.6, thermalFrame, 0.4, 0.0, resultFrame);
+		copyMatToFb(camFrame, framebuf);
 
-		/*const clock_t end_time = clock();
-		const float timeMs = float(end_time - begin_time) * 1000 / CLOCKS_PER_SEC;
-		sprintf(str, "%f", timeMs);
-		std::cout << str << std::endl;*/
+		//const clock_t end_time = clock();
+		//const float timeMs = float(end_time - begin_time) * 1000 / CLOCKS_PER_SEC;
+		//sprintf(str, "%dms", (int)timeMs);
+		//std::cout << str << std::endl;
 	}
 }

@@ -128,24 +128,24 @@ uint8_t IRSensor::getColdDotIndex()
 	return this->coldDotIndex;
 }
 
-void IRSensor::drawGradient(uint8_t startX, uint8_t startY, uint8_t stopX, uint8_t stopY)
+void IRSensor::drawGradient(const uint8_t startX, const uint8_t startY, const uint8_t stopX, const uint8_t stopY)
 {
+	uint32_t line[240];
 	const uint8_t height = stopY - startY;
 	const uint8_t width = stopX - startX;
 	const float diff = (maxTemp + minTempCorr - minTemp + maxTempCorr) / height;
-	uint16_t line[height];
 	for (uint8_t j = 0; j < height; j++)
 	{
 		const float temp = minTemp + (diff * j);
-		line[j] = temperatureToRGB565(temp, minTemp + minTempCorr, maxTemp + maxTempCorr);	
+		line[j] = temperatureToABGR(temp, minTemp + minTempCorr, maxTemp + maxTempCorr);
 	}
 
 	for (uint8_t i = 0; i < width; i++)
 	{
-		volatile uint16_t *pSdramAddress = (uint16_t *)(this->fbAddr + (240 * (startX + i) + startY) * 2);
+		volatile uint32_t *pSdramAddress = (uint32_t *)(this->fbAddr + (240 * (startX + i) + startY) * sizeof(uint32_t));
 		for (uint8_t j = 0; j < height; j++)
 		{
-			*(volatile uint16_t *)pSdramAddress = line[j];	
+			*(volatile uint32_t *)pSdramAddress = line[j];	
 			pSdramAddress++;
 		}
 	}
@@ -156,13 +156,13 @@ void IRSensor::visualizeImage(const uint8_t resX, const uint8_t resY, const uint
 	uint8_t line = 0;
 	uint8_t row = 0;
 
-	volatile uint16_t* pSdramAddress = (uint16_t *)this->fbAddr;
+	volatile uint32_t* pSdramAddress = (uint32_t *)this->fbAddr;
 
 	if (method == 0)
 	{
 		for (uint8_t i = 0; i < 64; i++)
 		{
-			colors[i] = this->temperatureToRGB565(dots[i], minTemp + minTempCorr, maxTemp + maxTempCorr);		
+			colors[i] = this->temperatureToABGR(dots[i], minTemp + minTempCorr, maxTemp + maxTempCorr);
 		}
 		
 		const uint8_t lrepeat = resX / 8;
@@ -175,7 +175,7 @@ void IRSensor::visualizeImage(const uint8_t resX, const uint8_t resY, const uint
 				{
 					for (uint8_t k = 0; k < rrepeat; k++) //repeat
 					{
-						*(volatile uint16_t *)pSdramAddress = colors[line * 8 + row];
+						*(volatile uint32_t *)pSdramAddress = colors[line * 8 + row];
 						pSdramAddress++;
 					}
 					row++;
@@ -188,11 +188,11 @@ void IRSensor::visualizeImage(const uint8_t resX, const uint8_t resY, const uint
 	else if (method == 1)
 	{
 		float tmp, u, t, d1, d2, d3, d4;
-		uint16_t p1, p2, p3, p4;
+		uint32_t p1, p2, p3, p4;
 		
 		for (uint8_t i = 0; i < 64; i++)
 		{
-			colors[i] = this->temperatureToRGB565(dots[i], minTemp + minTempCorr, maxTemp + maxTempCorr);		
+			colors[i] = this->temperatureToABGR(dots[i], minTemp + minTempCorr, maxTemp + maxTempCorr);
 		}
 		
 		for (uint16_t j = 0; j < resY; j++) {
@@ -203,7 +203,7 @@ void IRSensor::visualizeImage(const uint8_t resX, const uint8_t resY, const uint
 			}
 			u = tmp - h;
 
-			pSdramAddress = (uint16_t *)(this->fbAddr + (j * resX) * 2);
+			pSdramAddress = (uint32_t *)(this->fbAddr + (j * resX) * sizeof(uint32_t));
 
 			for (uint16_t i = 0; i < resX; i++) {
 
@@ -224,11 +224,17 @@ void IRSensor::visualizeImage(const uint8_t resX, const uint8_t resY, const uint
 				p3 = colors[(h + 1) * 8 + w + 1];
 				p4 = colors[(h + 1) * 8 + w];
 
-				uint8_t blue = ((uint8_t)(p1 & 0x001f)*d1 + (uint8_t)(p2 & 0x001f)*d2 + (uint8_t)(p3 & 0x001f)*d3 + (uint8_t)(p4 & 0x001f)*d4);
+				//RGB565
+				/*uint8_t blue = ((uint8_t)(p1 & 0x001f)*d1 + (uint8_t)(p2 & 0x001f)*d2 + (uint8_t)(p3 & 0x001f)*d3 + (uint8_t)(p4 & 0x001f)*d4);
 				uint8_t green = (uint8_t)((p1 >> 5) & 0x003f) * d1 + (uint8_t)((p2 >> 5) & 0x003f) * d2 + (uint8_t)((p3 >> 5) & 0x003f) * d3 + (uint8_t)((p4 >> 5) & 0x003f) * d4;
-				uint8_t red = (uint8_t)(p1 >> 11) * d1 + (uint8_t)(p2 >> 11) * d2 + (uint8_t)(p3 >> 11) * d3 + (uint8_t)(p4 >> 11) * d4;
+				uint8_t red = (uint8_t)(p1 >> 11) * d1 + (uint8_t)(p2 >> 11) * d2 + (uint8_t)(p3 >> 11) * d3 + (uint8_t)(p4 >> 11) * d4;*/
 
-				*(volatile uint16_t *)pSdramAddress = ((uint16_t) red << 11) | ((uint16_t) green << 5) | (blue);
+				//ABGR8888
+				uint8_t blue = ((uint8_t)(p1 >> 16)*d1 + (uint8_t)(p2 >> 16)*d2 + (uint8_t)(p3 >> 16)*d3 + (uint8_t)(p4 >> 16)*d4);
+				uint8_t green = (uint8_t)(p1 >> 8) * d1 + (uint8_t)(p2 >> 8) * d2 + (uint8_t)(p3 >> 8) * d3 + (uint8_t)(p4 >> 8) * d4;
+				uint8_t red = (uint8_t)(p1 >> 0) * d1 + (uint8_t)(p2 >> 0) * d2 + (uint8_t)(p3 >> 0) * d3 + (uint8_t)(p4 >> 0) * d4;
+
+				*(volatile uint32_t *)pSdramAddress = abgr2color(red, green, blue, 0xff);
 				pSdramAddress++;
 			}
 		}
@@ -246,7 +252,7 @@ void IRSensor::visualizeImage(const uint8_t resX, const uint8_t resY, const uint
 			}
 			u = tmp - h;
 
-			pSdramAddress = (uint16_t *)(this->fbAddr + (j * resX) * 2);
+			pSdramAddress = (uint32_t *)(this->fbAddr + (j * resX) * sizeof(uint32_t));
 
 			for (uint16_t i = 0; i < resX; i++) {
 				tmp = (float)(i) / (float)(resX - 1) * (8 - 1);
@@ -266,9 +272,9 @@ void IRSensor::visualizeImage(const uint8_t resX, const uint8_t resY, const uint
 				p3 = dots[(h + 1) * 8 + w + 1];
 				p4 = dots[(h + 1) * 8 + w];
 
-				float temp = p1*d1 + p2*d2 + p3*d3 + p4*d4;
+				const float temp = p1*d1 + p2*d2 + p3*d3 + p4*d4;
 
-				*(volatile uint16_t *)pSdramAddress = this->temperatureToRGB565(temp, minTemp + minTempCorr, maxTemp + maxTempCorr);
+				*(volatile uint32_t *)pSdramAddress = this->temperatureToABGR(temp, minTemp + minTempCorr, maxTemp + maxTempCorr);
 				pSdramAddress++;
 			}
 		}
@@ -299,6 +305,11 @@ uint16_t IRSensor::rgb2color(const uint8_t R, const uint8_t G, const uint8_t B)
 	return ((R & 0xF8) << 8) | ((G & 0xFC) << 3) | (B >> 3);
 }
 
+uint32_t IRSensor::abgr2color(const uint8_t R, const uint8_t G, const uint8_t B, const uint8_t A)
+{
+	return (A << 24) | (B << 16) | (G << 8) | R;
+}
+
 uint8_t IRSensor::calculateRGB(const uint8_t rgb1, const uint8_t rgb2, const float t1, const float step, const float t) {
 	return (uint8_t)(rgb1 + (((t - t1) / step) * (rgb2 - rgb1)));
 }
@@ -320,6 +331,28 @@ uint16_t IRSensor::temperatureToRGB565(const float temperature, const float minT
 		const uint8_t green = calculateRGB(colorScheme[step1 * 3 + 1], colorScheme[step2 * 3 + 1], (minTemp + step1 * step), step, temperature);
 		const uint8_t blue = calculateRGB(colorScheme[step1 * 3 + 2], colorScheme[step2 * 3 + 2], (minTemp + step1 * step), step, temperature);
 		val = rgb2color(red, green, blue);
+	}
+	return val;
+}
+
+uint32_t IRSensor::temperatureToABGR(const float temperature, const float minTemp, const float maxTemp)
+{
+	uint32_t val;
+	if (temperature < minTemp) {
+		val = abgr2color(colorScheme[0], colorScheme[1], colorScheme[2], 0xFF);
+	}
+	else if (temperature >= maxTemp) {
+		const short colorSchemeSize = sizeof(DEFAULT_COLOR_SCHEME);
+		val = abgr2color(colorScheme[(colorSchemeSize - 1) * 3 + 0], colorScheme[(colorSchemeSize - 1) * 3 + 1], colorScheme[(colorSchemeSize - 1) * 3 + 2], 0xFF);
+	}
+	else {
+		const float step = (maxTemp - minTemp) / 10.0;
+		const uint8_t step1 = (uint8_t)((temperature - minTemp) / step);
+		const uint8_t step2 = step1 + 1;
+		const uint8_t red = calculateRGB(colorScheme[step1 * 3 + 0], colorScheme[step2 * 3 + 0], (minTemp + step1 * step), step, temperature);
+		const uint8_t green = calculateRGB(colorScheme[step1 * 3 + 1], colorScheme[step2 * 3 + 1], (minTemp + step1 * step), step, temperature);
+		const uint8_t blue = calculateRGB(colorScheme[step1 * 3 + 2], colorScheme[step2 * 3 + 2], (minTemp + step1 * step), step, temperature);
+		val = abgr2color(red, green, blue, 0xFF);
 	}
 	return val;
 }

@@ -19,6 +19,7 @@ public:
 	float* getTempMap();
 	float getMaxTemp();
 	float getMinTemp();
+	float getCenterTemp();
 	uint8_t getHotDotIndex();
 	uint8_t getColdDotIndex();
 	uint16_t temperatureToRGB565(float temperature, float minTemp, float maxTemp);

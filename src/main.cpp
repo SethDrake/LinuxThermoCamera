@@ -161,6 +161,8 @@ cv::Mat readCamera(const int threshold)
 
 cv::Mat drawInfoPanel()
 {
+	infoPanelFb.clear(COLOR_BLACK);
+
 	irSensor.drawGradient((uint8_t*)&infoPanelImg, 6, 20, 16, 175, INFO_PANEL_WIDTH);
 
 	const uint8_t hotDot = irSensor.getHotDotIndex();
@@ -191,6 +193,7 @@ cv::Mat drawInfoPanel()
 
 	maxTemp = irSensor.getMaxTemp();
 	minTemp = irSensor.getMinTemp();
+	const float centerTemp = irSensor.getCenterTemp();
 
 	infoPanelFb.printf(4, 5, COLOR_RED, COLOR_BLACK, "MAX:%u\x81", maxTemp);
 	infoPanelFb.printf(4, 180, COLOR_GREEN, COLOR_BLACK, "MIN:%u\x81", minTemp);
@@ -201,6 +204,11 @@ cv::Mat drawInfoPanel()
 	cv::Mat frame;
 	frame.create(INFO_PANEL_HEIGHT, INFO_PANEL_WIDTH , CV_8UC4);
 	frame.data = (uchar*)&infoPanelImg;
+
+	char str[6];
+	sprintf(str, "%3.2f", centerTemp);
+	cv::putText(frame, str, cv::Point(20, 110), cv::FONT_HERSHEY_PLAIN, 1.1, cv::Scalar(0xFF, 0xFF, 0xFF), 2);
+
 	cv::cvtColor(frame, frame, cv::COLOR_RGBA2RGB);
 	return frame;
 }
@@ -238,6 +246,7 @@ int main(int argc, char *argv[])
 	resultFrame.create(cv::Size2d(vinfo.xres, vinfo.yres), CV_8UC3);
 
 	cv::Mat infoFrame;
+	char str[6];
 
 	while (true) {
 		const clock_t begin_time = clock();
@@ -247,12 +256,17 @@ int main(int argc, char *argv[])
 		cv::addWeighted(camFrame, 0.6, thermalFrame, 0.4, 0.1, camFrame); //blend images
 		//camFrame.convertTo(camFrame, -1, 1.2, 0); //gamma correction
 
-		//print markers
-		char str[6];
-		sprintf(str, "%u\xB0", maxTemp);
+		//center marker
+		const cv::Point centerPos = cv::Point(THERMAL_RES / 2, THERMAL_RES / 2);
+		
+		cv::drawMarker(camFrame, centerPos, cv::Scalar(0xFF, 0xFF, 0xFF), cv::MARKER_CROSS, 20, 1, 8);
+		//cv::drawMarker(camFrame, centerPos, cv::Scalar(0x00, 0x00, 0x00), cv::MARKER_SQUARE, 40, 1, 8);
+		
+		//temperature markers
+		sprintf(str, "%u", maxTemp);
 		cv::putText(camFrame, str, hotPos, cv::FONT_HERSHEY_PLAIN, 1.0, cv::Scalar(0xFF, 0xFF, 0xFF), 1);
 
-		sprintf(str, "%u\xF0", minTemp);
+		sprintf(str, "%u", minTemp);
 		cv::putText(camFrame, str, coldPos, cv::FONT_HERSHEY_PLAIN, 1.0, cv::Scalar(0x00, 0xFF, 0x00), 1);
 
 		if (cnt == 0) {

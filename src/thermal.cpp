@@ -3,6 +3,7 @@
 #include <linux/i2c-dev.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
+#include <algorithm>
 
 IRSensor::IRSensor()
 {
@@ -114,6 +115,16 @@ float IRSensor::getMaxTemp()
 float IRSensor::getMinTemp()
 {
 	return this->minTemp;
+}
+
+
+float IRSensor::getCenterTemp()
+{
+	const float t1 = this->dots[4 * 8 + 4 - 1];
+	const float t2 = this->dots[4 * 8 + 5 - 1];
+	const float t3 = this->dots[5 * 8 + 4 - 1];
+	const float t4 = this->dots[5 * 8 + 5 - 1];
+	return std::max(std::max(t1, t2), std::max(t3, t4));
 }
 
 uint8_t IRSensor::getHotDotIndex()

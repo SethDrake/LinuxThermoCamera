@@ -18,19 +18,19 @@ cv::VideoCapture camera;
 struct fb_fix_screeninfo finfo;
 struct fb_var_screeninfo vinfo;
 
-uint8_t *framebuffer;
-
 volatile uint16_t thermalImg[THERMAL_RES * THERMAL_RES];
 
 extern void fbcon_cursor(int blank);
-extern void clearScreen(const uint16_t color, uint8_t* fbp, struct fb_var_screeninfo* vinfo, struct fb_fix_screeninfo* finfo);
-extern void copyImgToFb(const uint16_t imgSizeX, const uint16_t imgSizeY, uint8_t* img, uint8_t* fbp, struct fb_var_screeninfo* vinfo, struct fb_fix_screeninfo* finfo);
+extern void clearScreen(const uint16_t color, uint8_t* fbp);
+extern void copyImgToFb(const uint16_t imgSizeX, const uint16_t imgSizeY, uint8_t* img, uint8_t* fbp);
+extern void copyMatToFb(cv::Mat mat, uint8_t* fbp);
 
-extern void initFramebuffer();
+extern uint8_t* initFramebuffer();
 extern bool initThermal();
 extern bool initCamera();
-extern void readThermal();
-extern void readCamera();
+
+extern cv::Mat readThermal();
+extern cv::Mat readCamera();
 
 
 void fbcon_cursor(const int blank)
@@ -44,23 +44,23 @@ void fbcon_cursor(const int blank)
 	close(fd);
 }
 
-void clearScreen(const uint16_t color, uint8_t* fbp, struct fb_var_screeninfo* vinfo, struct fb_fix_screeninfo* finfo)
+void clearScreen(const uint16_t color, uint8_t* fbp)
 {
-	for (int y = 0; y<vinfo->yres; y++)
-		for (int x = 0; x<vinfo->xres; x++)
+	for (int y = 0; y<vinfo.yres; y++)
+		for (int x = 0; x<vinfo.xres; x++)
 		{
-			const long location = (x + vinfo->xoffset) * (vinfo->bits_per_pixel / 8) + (y + vinfo->yoffset) * finfo->line_length;
+			const long location = (x + vinfo.xoffset) * (vinfo.bits_per_pixel / 8) + (y + vinfo.yoffset) * finfo.line_length;
 			*((uint16_t*)(fbp + location)) = color;
 		}
 }
 
-void copyImgToFb(const uint16_t imgSizeX, const uint16_t imgSizeY, uint8_t* img, uint8_t* fbp, struct fb_var_screeninfo* vinfo, struct fb_fix_screeninfo* finfo)
+void copyImgToFb(const uint16_t imgSizeX, const uint16_t imgSizeY, uint8_t* img, uint8_t* fbp)
 {
 	long t = 0;
 	for (int y = 0; y < imgSizeY; y++) {
 		for (int x = 0; x < imgSizeX; x++) {
 			{
-				const long location = (x + vinfo->xoffset) * (vinfo->bits_per_pixel / 8) + (y + vinfo->yoffset) * finfo->line_length;
+				const long location = (x + vinfo.xoffset) * (vinfo.bits_per_pixel / 8) + (y + vinfo.yoffset) * finfo.line_length;
 				*((uint16_t*)(fbp + location)) = *((uint16_t*)img + t);
 				t++;
 			}
@@ -68,7 +68,13 @@ void copyImgToFb(const uint16_t imgSizeX, const uint16_t imgSizeY, uint8_t* img,
 	}
 }
 
-void initFramebuffer()
+void copyMatToFb(const cv::Mat mat, uint8_t* fbp)
+{
+	const cv::Size2d size = mat.size();
+	copyImgToFb(size.width, size.height, mat.data, fbp);
+}
+
+uint8_t* initFramebuffer()
 {
 	fbcon_cursor(0);
 
@@ -86,9 +92,11 @@ void initFramebuffer()
 	ioctl(fb_fd, FBIOGET_FSCREENINFO, &finfo);
 
 	const long screensize = vinfo.yres_virtual * finfo.line_length;
-	framebuffer = (uint8_t*)mmap(nullptr, screensize, PROT_READ | PROT_WRITE, MAP_SHARED, fb_fd, (off_t)0);
+	uint8_t *framebuffer = (uint8_t*)mmap(nullptr, screensize, PROT_READ | PROT_WRITE, MAP_SHARED, fb_fd, (off_t)0);
 
-	clearScreen(0x0000, framebuffer, &vinfo, &finfo);
+	clearScreen(0x0000, framebuffer);
+
+	return framebuffer;
 }
 
 bool initThermal()
@@ -98,40 +106,43 @@ bool initThermal()
 
 bool initCamera()
 {
-	camera.open(0);
+	camera.open(0, cv::CAP_V4L);
 	if (!camera.isOpened())
 	{
 		return false;
 	}
-	camera.set(cv::CAP_PROP_FRAME_WIDTH, 240);
+	camera.set(cv::CAP_PROP_FRAME_WIDTH, 320);
 	camera.set(cv::CAP_PROP_FRAME_HEIGHT, 240);
 	//camera.set(cv::CAP_PROP_FPS, 10);
 	return true;
 }
 
-void readThermal()
+cv::Mat readThermal()
 {
+	cv::Mat thermalFrame;
 	irSensor.readImage();
 	irSensor.visualizeImage(THERMAL_RES, THERMAL_RES, 2);
-	cv::Mat thermalFrame;
+	thermalFrame.create(THERMAL_RES, THERMAL_RES, CV_16UC3);
+	thermalFrame.data = (uchar*)&thermalImg;
+	return thermalFrame;
 }
 
-void readCamera()
+cv::Mat readCamera()
 {
-	cv::Mat frame;
-	cv::Mat convertedFrame;
+	cv::Mat frame, frame2;
 	camera.read(frame);
 	if (!frame.empty())
 	{
-		cv::Size2f frame_size = frame.size();
-		cv::cvtColor(frame, convertedFrame, cv::COLOR_BGR2BGR565);
-		copyImgToFb(frame_size.width, frame_size.height, convertedFrame.data, framebuffer, &vinfo, &finfo);
+		cv::resize(frame, frame2, cv::Size(240, 240), 0, 0, cv::INTER_LINEAR); //resize
+		cv::cvtColor(frame2, frame, cv::COLOR_BGR2BGR565); //change color
 	}
+	return frame;
 }
 
 int main(int argc, char *argv[])
 {
-	initFramebuffer();
+	
+	uint8_t* framebuf = initFramebuffer();
 	if (!initThermal())
 	{
 		perror("Unable to init AMG8833 sensor!");
@@ -143,12 +154,31 @@ int main(int argc, char *argv[])
 		return 2;
 	}
 
+	cv::Mat resultFrame;
+
+	int i = 0;
+
 	//char str[10];
 	while (true) {
-		readCamera();
 		//const clock_t begin_time = clock();
-		//readThermal();
-		//copyImgToFb(THERMAL_RES, THERMAL_RES, (uint8_t*)&thermalImg, framebuffer, &vinfo, &finfo);
+
+		const cv::Mat camFrame = readCamera();
+		const cv::Mat thermalFrame = readThermal();
+		
+		//cv::addWeighted(camFrame, 0.5, thermalFrame, 0.5, 0.0, resultFrame);
+		
+		if (i == 0) {
+			copyMatToFb(camFrame, framebuf);
+		}
+		else {
+			copyMatToFb(thermalFrame, framebuf);
+		}
+		i++;
+		if (i > 2)
+		{
+			i = 0;
+		}
+
 		/*const clock_t end_time = clock();
 		const float timeMs = float(end_time - begin_time) * 1000 / CLOCKS_PER_SEC;
 		sprintf(str, "%f", timeMs);

@@ -14,7 +14,7 @@ OBJCOPY := C:/SysGCC/raspberry/bin/arm-linux-gnueabihf-objcopy.exe
 #Additional flags
 PREPROCESSOR_MACROS := DEBUG=1
 INCLUDE_DIRS := =/usr/local/include/opencv4
-LIBRARY_DIRS := 
+LIBRARY_DIRS := =/usr/local/lib
 LIBRARY_NAMES := opencv_core opencv_imgproc opencv_video opencv_videoio opencv_features2d opencv_highgui opencv_objdetect
 ADDITIONAL_LINKER_INPUTS := 
 MACOS_FRAMEWORKS := 

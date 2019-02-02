@@ -1189,7 +1189,7 @@
 #endif
 
 // --- Include directories begin --- //
-//C:\SysGCC\raspberry\arm-linux-gnueabihf\sysroot\usr\local\include\opencv4
+//c:\sysgcc\raspberry\bin\../arm-linux-gnueabihf/sysroot/usr/local/include/opencv4
 //c:\sysgcc\raspberry\arm-linux-gnueabihf\include\c++\6
 //c:\sysgcc\raspberry\arm-linux-gnueabihf\include\c++\6\backward
 //c:\sysgcc\raspberry\lib\gcc\arm-linux-gnueabihf\6\include
@@ -1198,6 +1198,7 @@
 //c:\sysgcc\raspberry\arm-linux-gnueabihf\include\arm-linux-gnueabihf\c++\6
 //c:\sysgcc\raspberry\arm-linux-gnueabihf\sysroot\usr\include\arm-linux-gnueabihf
 //c:\sysgcc\raspberry\arm-linux-gnueabihf\sysroot\usr\include
+//=/usr/local/include/opencv4
 // --- Include directories end --- //
 
 

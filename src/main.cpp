@@ -256,7 +256,6 @@ int main(int argc, char *argv[])
 		const cv::Mat camFrame = readCamera(0);
 		const cv::Mat thermalFrame = readThermal();
 		cv::addWeighted(camFrame, 0.6, thermalFrame, 0.4, 0.1, camFrame); //blend images
-		//camFrame.convertTo(camFrame, -1, 1.2, 0); //gamma correction
 
 		//center marker
 		const cv::Point centerPos = cv::Point(THERMAL_RES / 2, THERMAL_RES / 2);
@@ -270,6 +269,8 @@ int main(int argc, char *argv[])
 
 		sprintf(str, "%u", minTemp);
 		cv::putText(camFrame, str, coldPos, cv::FONT_HERSHEY_PLAIN, 1.0, cv::Scalar(0x00, 0xFF, 0x00), 1);
+
+		camFrame.convertTo(camFrame, -1, 1.5, 0); //gamma correction
 
 		if (cnt == 0) {
 			infoFrame = drawInfoPanel();

@@ -30,3 +30,12 @@
 *.exe
 *.out
 *.app
+/src/LinuxThermoCamera.VC.db
+/src/Makefile.old
+/src/release.mak.old
+/src/Debug
+/src/VisualGDBCache
+/src/debug.mak.old
+/.vs/LinuxThermoCamera/v14/*.suo
+/src/.vs/LinuxThermoCamera/v14/*.suo
+/src/LinuxThermoCamera.VC.VC.opendb

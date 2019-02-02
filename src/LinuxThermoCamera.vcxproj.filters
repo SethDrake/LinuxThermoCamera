@@ -32,6 +32,9 @@
     <ClCompile Include="framebuffer.cpp">
       <Filter>Source files</Filter>
     </ClCompile>
+    <ClCompile Include="utils.cpp">
+      <Filter>Source files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Makefile" />
@@ -62,6 +65,9 @@
       <Filter>Header files</Filter>
     </ClInclude>
     <ClInclude Include="framebuffer.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="utils.h">
       <Filter>Header files</Filter>
     </ClInclude>
   </ItemGroup>

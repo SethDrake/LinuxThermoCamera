@@ -2,6 +2,7 @@
 #include "common.h"
 #include "thermal.h"
 #include "framebuffer.h"
+#include "utils.h"
 #include <iostream>
 #include <linux/fb.h>
 #include <fcntl.h>
@@ -148,6 +149,7 @@ cv::Mat readCamera(const int threshold)
 			cv::Mat dst;
 			cv::blur(frame, edges, cv::Size(3, 3)); //blur image
 			cv::Canny(edges, edges, threshold, threshold * 3, 3); //Canny detector
+			// ReSharper disable once CppJoinDeclarationAndAssignment
 			dst = cv::Scalar::all(0);
 			cv::cvtColor(frame, frame, cv::COLOR_GRAY2BGR);
 			frame.copyTo(dst, edges);
@@ -199,7 +201,7 @@ cv::Mat drawInfoPanel()
 	infoPanelFb.printf(4, 180, COLOR_GREEN, COLOR_BLACK, "MIN:%u\x81", minTemp);
 	infoPanelFb.printf(4, 206, "VM:%u", 2);
 	infoPanelFb.printf(4, 217, "T:%04u", frameTimeMs);
-	infoPanelFb.printf(4, 230, "CPU %u%%", 0);
+	infoPanelFb.printf(4, 230, "CPU %u%%", (int)GetCPUAverageLoad());
 
 	cv::Mat frame;
 	frame.create(INFO_PANEL_HEIGHT, INFO_PANEL_WIDTH , CV_8UC4);

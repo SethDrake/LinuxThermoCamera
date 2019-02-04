@@ -39,3 +39,7 @@
 /.vs/LinuxThermoCamera/v14/*.suo
 /src/.vs/LinuxThermoCamera/v14/*.suo
 /src/LinuxThermoCamera.VC.VC.opendb
+/src/Release
+/src/.vs/LinuxThermoCamera/v15/*.suo
+/src/.vs/LinuxThermoCamera/v15
+/src/CodeDB

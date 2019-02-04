@@ -258,10 +258,7 @@ int main(int argc, char *argv[])
 		cv::addWeighted(camFrame, 0.6, thermalFrame, 0.4, 0.1, camFrame); //blend images
 
 		//center marker
-		const cv::Point centerPos = cv::Point(THERMAL_RES / 2, THERMAL_RES / 2);
-		
-		cv::drawMarker(camFrame, centerPos, cv::Scalar(0xFF, 0xFF, 0xFF), cv::MARKER_CROSS, 20, 1, 8);
-		//cv::drawMarker(camFrame, centerPos, cv::Scalar(0x00, 0x00, 0x00), cv::MARKER_SQUARE, 40, 1, 8);
+		cv::drawMarker(camFrame, cv::Point(THERMAL_RES / 2, THERMAL_RES / 2), cv::Scalar(0xFF, 0xFF, 0xFF), cv::MARKER_CROSS, 20, 1, 8);
 		
 		//temperature markers
 		sprintf(str, "%u", maxTemp);

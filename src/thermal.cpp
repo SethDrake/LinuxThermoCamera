@@ -196,21 +196,18 @@ void IRSensor::visualizeImage(uint8_t* fbAddr, const uint8_t resX, const uint8_t
 	}
 	else if (method == 1)
 	{
-		float tmp, u, t, d1, d2, d3, d4;
-		uint32_t p1, p2, p3, p4;
-		
 		for (uint8_t i = 0; i < 64; i++)
 		{
 			colors[i] = this->temperatureToABGR(dots[i], minTemp + minTempCorr, maxTemp + maxTempCorr);
 		}
 		
 		for (uint16_t j = 0; j < resY; j++) {
-			tmp = (float)(j) / (float)(resY - 1) * (8 - 1);
+			float tmp = (float)(j) / (float)(resY - 1) * (8 - 1);
 			int16_t h = (int16_t)tmp;
 			if (h >= 8 - 1) {
 				h = 8 - 2;
 			}
-			u = tmp - h;
+			const float u = tmp - h;
 
 			pSdramAddress = (uint32_t *)(fbAddr + (j * resX) * sizeof(uint32_t));
 
@@ -221,17 +218,17 @@ void IRSensor::visualizeImage(uint8_t* fbAddr, const uint8_t resX, const uint8_t
 				if (w >= 8 - 1) {
 					w = 8 - 2;
 				}
-				t = tmp - w;
+				const float t = tmp - w;
 
-				d1 = (1 - t) * (1 - u);
-				d2 = t * (1 - u);
-				d3 = t * u;
-				d4 = (1 - t) * u;
+				const float d1 = (1 - t) * (1 - u);
+				const float d2 = t * (1 - u);
+				const float d3 = t * u;
+				const float d4 = (1 - t) * u;
 
-				p1 = colors[h * 8 + w];
-				p2 = colors[h * 8 + w + 1];
-				p3 = colors[(h + 1) * 8 + w + 1];
-				p4 = colors[(h + 1) * 8 + w];
+				const uint32_t p1 = colors[h * 8 + w];
+				const uint32_t p2 = colors[h * 8 + w + 1];
+				const uint32_t p3 = colors[(h + 1) * 8 + w + 1];
+				const uint32_t p4 = colors[(h + 1) * 8 + w];
 
 				//RGB565
 				/*uint8_t blue = ((uint8_t)(p1 & 0x001f)*d1 + (uint8_t)(p2 & 0x001f)*d2 + (uint8_t)(p3 & 0x001f)*d3 + (uint8_t)(p4 & 0x001f)*d4);
@@ -239,9 +236,9 @@ void IRSensor::visualizeImage(uint8_t* fbAddr, const uint8_t resX, const uint8_t
 				uint8_t red = (uint8_t)(p1 >> 11) * d1 + (uint8_t)(p2 >> 11) * d2 + (uint8_t)(p3 >> 11) * d3 + (uint8_t)(p4 >> 11) * d4;*/
 
 				//ABGR8888
-				uint8_t blue = ((uint8_t)(p1 >> 16)*d1 + (uint8_t)(p2 >> 16)*d2 + (uint8_t)(p3 >> 16)*d3 + (uint8_t)(p4 >> 16)*d4);
-				uint8_t green = (uint8_t)(p1 >> 8) * d1 + (uint8_t)(p2 >> 8) * d2 + (uint8_t)(p3 >> 8) * d3 + (uint8_t)(p4 >> 8) * d4;
-				uint8_t red = (uint8_t)(p1 >> 0) * d1 + (uint8_t)(p2 >> 0) * d2 + (uint8_t)(p3 >> 0) * d3 + (uint8_t)(p4 >> 0) * d4;
+				const uint8_t blue = ((uint8_t)(p1 >> 16)*d1 + (uint8_t)(p2 >> 16)*d2 + (uint8_t)(p3 >> 16)*d3 + (uint8_t)(p4 >> 16)*d4);
+				const uint8_t green = (uint8_t)(p1 >> 8) * d1 + (uint8_t)(p2 >> 8) * d2 + (uint8_t)(p3 >> 8) * d3 + (uint8_t)(p4 >> 8) * d4;
+				const uint8_t red = (uint8_t)(p1 >> 0) * d1 + (uint8_t)(p2 >> 0) * d2 + (uint8_t)(p3 >> 0) * d3 + (uint8_t)(p4 >> 0) * d4;
 
 				*(volatile uint32_t *)pSdramAddress = abgr2color(red, green, blue, 0xff);
 				pSdramAddress++;
@@ -250,16 +247,13 @@ void IRSensor::visualizeImage(uint8_t* fbAddr, const uint8_t resX, const uint8_t
 	}
 	else if (method == 2)
 	{
-		float tmp, u, t, d1, d2, d3, d4;
-		float p1, p2, p3, p4;
-		
 		for (uint16_t j = 0; j < resY; j++) {
-			tmp = (float)(j) / (float)(resY - 1) * (8 - 1);
+			float tmp = (float)(j) / (float)(resY - 1) * (8 - 1);
 			int16_t h = (int16_t)tmp;
 			if (h >= 8 - 1) {
 				h = 8 - 2;
 			}
-			u = tmp - h;
+			const float u = tmp - h;
 
 			pSdramAddress = (uint32_t *)(fbAddr + (j * resX) * sizeof(uint32_t));
 
@@ -269,17 +263,17 @@ void IRSensor::visualizeImage(uint8_t* fbAddr, const uint8_t resX, const uint8_t
 				if (w >= 8 - 1) {
 					w = 8 - 2;
 				}
-				t = tmp - w;
+				const float t = tmp - w;
 
-				d1 = (1 - t) * (1 - u);
-				d2 = t * (1 - u);
-				d3 = t * u;
-				d4 = (1 - t) * u;
+				const float d1 = (1 - t) * (1 - u);
+				const float d2 = t * (1 - u);
+				const float d3 = t * u;
+				const float d4 = (1 - t) * u;
 
-				p1 = dots[h*8+w];
-				p2 = dots[h * 8 + w + 1];
-				p3 = dots[(h + 1) * 8 + w + 1];
-				p4 = dots[(h + 1) * 8 + w];
+				const float p1 = dots[h * 8 + w];
+				const float p2 = dots[h * 8 + w + 1];
+				const float p3 = dots[(h + 1) * 8 + w + 1];
+				const float p4 = dots[(h + 1) * 8 + w];
 
 				const float temp = p1*d1 + p2*d2 + p3*d3 + p4*d4;
 

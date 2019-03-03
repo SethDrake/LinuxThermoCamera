@@ -354,8 +354,8 @@ UsedLibrary="Grideye.lbr"
 
 [Win_1]
 Type="Control Panel"
-Loc="188 100 1387 699"
-State=2
+Loc="432 207 1631 854"
+State=0
 Number=0
 
 [Desktop]
